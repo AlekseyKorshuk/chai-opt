@@ -1,0 +1,79 @@
+apiVersion: serving.kubeflow.org/v1beta1
+kind: InferenceService
+metadata:
+  labels:
+    qos.coreweave.cloud/latency: low
+  name: opt-inference
+  namespace: tenant-chaiml-models
+  annotations:
+    autoscaling.knative.dev/class: kpa.autoscaling.knative.dev
+    autoscaling.knative.dev/scale-down-delay: "30s"
+    autoscaling.knative.dev/stable-window: "180s"
+    autoscaling.knative.dev/scale-to-zero-grace-period: "30m"
+    autoscaling.knative.dev/max-scale-down-rate: "1.5"
+    autoscaling.knative.dev/max-scale-up-rate: "2"
+    autoscaling.knative.dev/container-concurrency-target-percentage: "85"
+    autoscaling.knative.dev/tick-interval: "15s"
+    autoscaling.knative.dev/panic-window-percentage: "20"
+    autoscaling.knative.dev/panic-threshold-percentage: "400"
+spec:
+  predictor:
+    minReplicas: 1
+    maxReplicas: 1
+    containerConcurrency: 4
+    timeout: 20
+    batcher:
+      maxBatchSize: 4
+      maxLatency: 100
+      timeout: 20
+    containers:
+    - name: inference-container
+      image: alekseykorshuk/opt-inference:latest
+      imagePullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: "3"
+          memory: 20Gi
+          nvidia.com/gpu: "1"
+        requests:
+          cpu: "1"
+          memory: 10Gi
+      env:
+      - name: STORAGE_URI
+        value: pvc://model-storage-v15/EleutherAI/gpt-j-6B
+      readinessProbe:
+        exec:
+          command:
+            - cat
+            - /tmp/ready
+        failureThreshold: 1
+        initialDelaySeconds: 10
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+    imagePullSecrets:
+        - name: docker-creds
+    affinity:
+      nodeAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 5
+            preference:
+              matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - ORD1
+          - weight: 20
+            preference:
+              matchExpressions:
+              - key: gpu.nvidia.com/class
+                operator: In
+                values:
+                - RTX_A5000
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: gpu.nvidia.com/class
+              operator: In
+              values:
+                - RTX_A5000
