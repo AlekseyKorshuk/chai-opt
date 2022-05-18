@@ -19,4 +19,4 @@
 
 1. Change `MODEL_SIZE` in `opt-inference.yaml` and needed memory.
 2. ```kubectl apply -f opt-inference.yaml```
-3. Inference with this url: http://opt-inference.\<NAMESPACE>.knative.chi.coreweave.com/v1/models/opt:predict
+3. Inference with this url: http://opt-inference.<NAMESPACE\>.knative.chi.coreweave.com/v1/models/opt:predict
