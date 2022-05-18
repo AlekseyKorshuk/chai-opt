@@ -14,7 +14,7 @@ import torch
 SERVER_NUM_WORKERS = int(os.environ.get('SERVER_NUM_WORKERS', 1))
 SERVER_PORT = int(os.environ.get('SERVER_PORT', 8080))
 MODEL_DEVICE = 0
-MODEL_SIZE = '125m'
+MODEL_SIZE = str(os.environ.get('MODEL_SIZE', '125m')).lower()  # ["125m", "350m", "1.3b", "2.7b", "6.7b", "13b", "30b"]
 MODEL_PATH = f'facebook/opt-{MODEL_SIZE}'
 MODEL_NAME = 'opt'
 MODEL_PRECISION = os.environ.get('MODEL_PRECISION', 'native').lower()
@@ -85,6 +85,7 @@ class KFServingHuggingFace(kfserving.KFModel):
     def load_tokenizer(self):
         logger.info(f'Loading tokenizer from {MODEL_PATH} ...')
         self.tokenizer = AutoTokenizer.from_pretrained(MODEL_PATH, local_files_only=False)
+        self.tokenizer.pad_token = self.tokenizer.eos_token
         logger.info('Tokenizer loaded.')
 
     def load_bad_word_ids(self):
@@ -158,11 +159,14 @@ class KFServingHuggingFace(kfserving.KFModel):
             return_attention_mask=True,
             padding=True).to(0)
 
+        start_time = time.time()
         with torch.inference_mode():
             outputs = self.model.generate(
                 input_ids['input_ids'],
                 attention_mask=input_ids['attention_mask'],
                 **request_params)
+
+        logger.info(f'Predicted {request} in {str(time.time() - start_time)} seconds.')
 
         responses = []
         for ins, outs in zip(inputs, outputs):

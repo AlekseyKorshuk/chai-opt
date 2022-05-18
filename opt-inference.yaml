@@ -4,7 +4,7 @@ metadata:
   labels:
     qos.coreweave.cloud/latency: low
   name: opt-inference
-  namespace: tenant-chaiml-models
+  namespace: tenant-chairesearch-test
   annotations:
     autoscaling.knative.dev/class: kpa.autoscaling.knative.dev
     autoscaling.knative.dev/scale-down-delay: "30s"
@@ -21,26 +21,26 @@ spec:
     minReplicas: 1
     maxReplicas: 1
     containerConcurrency: 4
-    timeout: 20
+    timeout: 600
     batcher:
       maxBatchSize: 4
       maxLatency: 100
-      timeout: 20
+      timeout: 600
     containers:
     - name: inference-container
-      image: alekseykorshuk/opt-inference:latest
+      image: alekseykorshuk/opt-inference:v1
       imagePullPolicy: IfNotPresent
       resources:
         limits:
           cpu: "3"
-          memory: 20Gi
+          memory: 150Gi
           nvidia.com/gpu: "1"
         requests:
           cpu: "1"
-          memory: 10Gi
+          memory: 150Gi
       env:
-      - name: STORAGE_URI
-        value: pvc://model-storage-v15/EleutherAI/gpt-j-6B
+        - name: MODEL_SIZE
+          value: "6.7b"
       readinessProbe:
         exec:
           command:
@@ -51,8 +51,6 @@ spec:
         periodSeconds: 10
         timeoutSeconds: 5
         successThreshold: 1
-    imagePullSecrets:
-        - name: docker-creds
     affinity:
       nodeAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
@@ -69,11 +67,11 @@ spec:
               - key: gpu.nvidia.com/class
                 operator: In
                 values:
-                - RTX_A5000
+                - RTX_A4000
         requiredDuringSchedulingIgnoredDuringExecution:
           nodeSelectorTerms:
           - matchExpressions:
             - key: gpu.nvidia.com/class
               operator: In
               values:
-                - RTX_A5000
+                - RTX_A4000
